@@ -130,26 +130,6 @@
             <div class="alert alert-warning">No patients to display.</div>
         }
     }
-    <h4>Patients Admitted to This Practice (No Treatment Yet)</h4>
-    @if (!string.IsNullOrEmpty(Model.SelectedHospital))
-    {
-        var admittedPatients = Model.Patients
-            .Where(p => Model.Treatments.All(t => t.Patient != p.MedicalReferenceNumber && t.Patient != p.PatientName))
-            .ToList();
-        if (admittedPatients.Any())
-        {
-            <ul>
-            @foreach (var patient in admittedPatients)
-            {
-                <li>@patient.PatientName (@patient.MedicalReferenceNumber)</li>
-            }
-            </ul>
-        }
-        else
-        {
-            <div class="alert alert-warning">No admitted patients without treatment for this practice.</div>
-        }
-    }
     <h2>Providers</h2>
     <p>Number of Providers: @filteredProviders.Count()</p>
     <table class="table table-bordered table-striped">
