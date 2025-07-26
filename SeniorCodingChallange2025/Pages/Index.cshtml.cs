@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using SeniorCodingChallange2025.Data;
 
@@ -139,6 +140,83 @@ public class IndexModel : PageModel
                 Console.WriteLine($"Hospital missing name or identity: {hospital.Name} / {hospital.Identity}");
             }
         }
+    }
+
+    /// <summary>
+    /// Handles the form submission for adding or editing a treatment.
+    /// </summary>
+    public async Task<IActionResult> OnPostAsync()
+    {
+        var form = Request.Form;
+        var editTreatmentId = form["EditTreatmentId"].ToString();
+        var details = form["Details"].ToString();
+        var hospital = form["Hospital"].ToString();
+        var provider = form["Provider"].ToString();
+        var patient = form["Patient"].ToString();
+        var dateTimeDischarged = form["DateTimeDischarged"].ToString();
+
+        // Reload all data (to keep lists in sync)
+        OnGet();
+        
+        if (!string.IsNullOrEmpty(editTreatmentId))
+        {
+            // Edit existing treatment
+            if (int.TryParse(editTreatmentId, out int idx) && idx >= 0 && idx < Treatments.Count)
+            {
+                Treatments[idx].Details = details;
+                Treatments[idx].Hospital = hospital;
+                Treatments[idx].Provider = provider;
+                Treatments[idx].Patient = patient;
+                Treatments[idx].DateTimeDischarged = dateTimeDischarged;
+            }
+        }
+        else
+        {
+            // Add new treatment
+            Treatments.Add(new Treatment
+            {
+                Details = details,
+                Hospital = hospital,
+                Provider = provider,
+                Patient = patient,
+                DateTimeDischarged = dateTimeDischarged
+            });
+        }
+
+        // Save all treatments back to CSV
+        var treatmentsPath = Path.Combine(Directory.GetCurrentDirectory(), "InputCSV", "Treatments.csv");
+        using (var writer = new StreamWriter(treatmentsPath, false))
+        {
+            foreach (var t in Treatments)
+            {
+                // Write each treatment as a CSV line
+                await writer.WriteLineAsync($"\"{t.Details}\",\"{t.Hospital}\",\"{t.Provider}\",\"{t.Patient}\",\"{t.DateTimeDischarged}\"");
+            }
+        }
+
+        return RedirectToPage();
+    }
+
+    /// <summary>
+    /// Handles the request to edit a treatment.
+    /// </summary>
+    /// <param name="editIndex">Index of the treatment to edit</param>
+    /// <returns>IActionResult to render the page with edit data</returns>
+    public IActionResult OnPostEdit(int editIndex)
+    {
+        // Reload all data
+        OnGet();
+        if (editIndex >= 0 && editIndex < Treatments.Count)
+        {
+            var t = Treatments[editIndex];
+            ViewData["EditTreatmentId"] = editIndex;
+            ViewData["EditDetails"] = t.Details;
+            ViewData["EditHospital"] = t.Hospital;
+            ViewData["EditProvider"] = t.Provider;
+            ViewData["EditPatient"] = t.Patient;
+            ViewData["EditDateTimeDischarged"] = t.DateTimeDischarged;
+        }
+        return Page();
     }
 
     // Helper for name validation

@@ -156,7 +156,7 @@
         <thead>
         <tr>
             <th>Name</th>
-            <th>Number</th>
+            <th>Number (ID)</th>
             <th>Hospital</th>
             <th>Doctor</th>
         </tr>
@@ -173,9 +173,158 @@
         }
         </tbody>
     </table>
+
+    <h2>Treatments</h2>
+    <button type="button" class="btn btn-success mb-2" id="addTreatmentBtn" data-bs-toggle="modal" data-bs-target="#editTreatmentModal">Add New</button>
+    <table class="table table-bordered table-striped">
+        <thead>
+            <tr>
+                <th>Details</th>
+                <th>Hospital</th>
+                <th>Provider</th>
+                <th>Patient</th>
+                <th>Date/Time Discharged</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+        @for (int i = 0; i < Model.Treatments.Count; i++)
+        {
+            var treatment = Model.Treatments[i];
+            <tr>
+                <td>@treatment.Details</td>
+                <td>@treatment.Hospital</td>
+                <td>@treatment.Provider</td>
+                <td>@treatment.Patient</td>
+                <td>@treatment.DateTimeDischarged</td>
+                <td>
+                    <button type="button" class="btn btn-sm btn-warning" data-bs-toggle="modal" data-bs-target="#editTreatmentModal" data-index="@i">Edit</button>
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table>
+
     
 }
 else
 {
     <div class="alert alert-info">You must be logged in to view provider data.</div>
 }
+
+<!-- Edit Treatment Modal (always rendered) -->
+<div class="modal fade" id="editTreatmentModal" tabindex="-1" role="dialog" aria-labelledby="editTreatmentModalLabel" aria-hidden="true">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="editTreatmentModalLabel">Edit Treatment</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <form id="editTreatmentForm" method="post">
+        <div class="modal-body">
+          <input type="hidden" name="EditTreatmentId" id="editTreatmentId" />
+          <div class="form-group">
+            <label>Details</label>
+            <input name="Details" id="editDetails" class="form-control" required />
+          </div>
+          <div class="form-group">
+            <label>Hospital</label>
+            <select name="Hospital" id="editHospital" class="form-control" required>
+              <option value="">-- Select Hospital --</option>
+              @foreach (var hospital in Model.Hospitals)
+              {
+                <option value="@hospital.Name">@hospital.Name</option>
+              }
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Provider</label>
+            <select name="Provider" id="editProvider" class="form-control">
+              <option value="">-- Select Provider --</option>
+              @foreach (var provider in Model.Providers)
+              {
+                <option value="@provider.Name">@provider.Name</option>
+              }
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Patient</label>
+            <select name="Patient" id="editPatient" class="form-control" required>
+              <option value="">-- Select Patient --</option>
+              @foreach (var patient in Model.Patients)
+              {
+                <option value="@patient.PatientName">@patient.PatientName</option>
+              }
+            </select>
+          </div>
+          <div class="form-group">
+              <label>Date/Time Discharged</label>
+            <input type="datetime-local" name="DateTimeDischarged" id="editDateTimeDischarged" class="form-control" />
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Update Treatment</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    var editModal = document.getElementById('editTreatmentModal');
+    var addBtn = document.getElementById('addTreatmentBtn');
+    var treatmentsJson = '@Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Treatments))'.replace(/'/g, "\'").replace(/\n/g, '');
+    var treatments = JSON.parse(treatmentsJson);
+    editModal.addEventListener('show.bs.modal', function (event) {
+      var button = event.relatedTarget;
+      var index = button.getAttribute('data-index');
+      if (index !== null && index !== undefined) {
+        var t = treatments[index];
+        // Populate the modal fields with the treatment data
+        document.getElementById('editTreatmentId').value = index;
+        document.getElementById('editDetails').value = t && t.Details ? t.Details : '';
+        document.getElementById('editHospital').value = t && t.Hospital ? t.Hospital : '';
+        document.getElementById('editProvider').value = t && t.Provider ? t.Provider : '';
+        document.getElementById('editPatient').value = t && t.Patient ? t.Patient : '';
+        // Format date for datetime-local input
+        if (t && t.DateTimeDischarged) {
+          var dt = t.DateTimeDischarged.replace(' ', 'T');
+          document.getElementById('editDateTimeDischarged').value = dt;
+        } else {
+          document.getElementById('editDateTimeDischarged').value = '';
+        }
+        var patientSelect = document.getElementById('editPatient');
+        if (patientSelect) {
+          setTimeout(function() {
+            for (var i = 0; i < patientSelect.options.length; i++) {
+              if (patientSelect.options[i].value === t.Patient) {
+                patientSelect.selectedIndex = i;
+                break;
+              }
+            }
+          }, 0);
+        }
+      } else {
+        // If no index is provided, clear the modal fields
+        document.getElementById('editTreatmentId').value = '';
+        document.getElementById('editDetails').value = '';
+        document.getElementById('editHospital').value = '';
+        document.getElementById('editProvider').value = '';
+        document.getElementById('editPatient').value = '';
+        document.getElementById('editDateTimeDischarged').value = '';
+      }
+    });
+    // Add new button clears modal
+    addBtn.addEventListener('click', function() {
+      document.getElementById('editTreatmentId').value = '';
+      document.getElementById('editDetails').value = '';
+      document.getElementById('editHospital').value = '';
+      document.getElementById('editProvider').value = '';
+      document.getElementById('editPatient').value = '';
+      document.getElementById('editDateTimeDischarged').value = '';
+    });
+  });
+</script>
