@@ -1,10 +1,73 @@
 ﻿@page
 @model IndexModel
+@inject SignInManager<IdentityUser> SignInManager
+@inject UserManager<IdentityUser> UserManager
 @{
     ViewData["Title"] = "Home page";
 }
+@if (SignInManager.IsSignedIn(User))
+{
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
-</div>
+    var filteredProviders = string.IsNullOrEmpty(Model.SelectedHospital) ? Model.Providers : Model.Providers.Where(p => p.Hospital == Model.SelectedHospital);
+
+    var user = await UserManager.GetUserAsync(User);
+    var roles = await UserManager.GetRolesAsync(user);
+    if (roles.Contains("Administrator"))
+    {
+        <h2>Administrator View:</h2>
+    }
+    else if (roles.Contains("Clerk"))
+    {
+        <h2>Clerk View:</h2>
+    }
+    else if (roles.Contains("Doctor"))
+    {
+        <h2>Doctor View:</h2>
+    }
+    else if (roles.Contains("Nurse"))
+    {
+        <h2>Nurse View:</h2>
+    }
+
+    <form method="get">
+        <div class="form-group">
+            <label for="hospitalSelect">Select Hospital:</label>
+            <select id="hospitalSelect" name="selectedHospital" class="form-control" onchange="this.form.submit()">
+                <option value="">-- All Hospitals --</option>
+                @foreach (var hospital in Model.Hospitals)
+                {
+                    <option value="@hospital.Name" selected="@(hospital.Name == Model.SelectedHospital ? "selected" : null)">@hospital.Name</option>
+                }
+            </select>
+        </div>
+    </form>
+    
+    <h2>Providers</h2>
+    <table class="table table-bordered table-striped">
+        <thead>
+        <tr>
+            <th>Name</th>
+            <th>Number</th>
+            <th>Hospital</th>
+            <th>Doctor</th>
+        </tr>
+        </thead>
+        <tbody>
+        @foreach (var provider in filteredProviders)
+        {
+            <tr>
+                <td>@provider.Name</td>
+                <td>@provider.Number</td>
+                <td>@provider.Hospital</td>
+                <td>@(provider.Doctor ? "Yes" : "No")</td>
+            </tr>
+        }
+        </tbody>
+    </table>
+    
+    
+}
+else
+{
+    <div class="alert alert-info">You must be logged in to view provider data.</div>
+}
