@@ -1,0 +1,10 @@
+bin/
+obj/
+/packages/
+riderModule.iml
+.idea
+/_ReSharper.Caches/
+/SeniorCodingChallange2025/InputCSV/
+/SeniorCodingChallange2025/app.db
+/SeniorCodingChallange2025/app.db-shm
+/SeniorCodingChallange2025/app.db-wal
