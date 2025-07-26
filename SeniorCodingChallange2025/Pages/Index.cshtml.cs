@@ -37,10 +37,10 @@ public class IndexModel : PageModel
         var csvPath = Path.Combine(Directory.GetCurrentDirectory(), "InputCSV", "Providers.csv");
         var allProviders = CsvLoader.LoadCsv(csvPath, fields => new Provider
         {
-            Name = fields[0].Trim('"'),
-            Number = fields[1].Trim('"'),
-            Hospital = fields[2].Trim('"'),
-            Doctor = fields[3].Trim('"').Equals("Yes", StringComparison.OrdinalIgnoreCase)
+            Name = fields[0].Trim('"').Trim(),
+            Number = fields[1].Trim('"').Trim(),
+            Hospital = fields[2].Trim('"').Trim(),
+            Doctor = fields[3].Trim('"').Trim().Equals("Yes", StringComparison.OrdinalIgnoreCase)
         });
 
         // Only keep valid providers
@@ -99,17 +99,17 @@ public class IndexModel : PageModel
         // All hospitals referenced by treatments must exist in the hospitals data file.
         // All clients referenced by treatments must exist in the patients data file.
         // All providers referenced by treatments must exist in the providers data file.
-        Treatments = allTreatments;
-            //.Where(t =>
-                //!string.IsNullOrWhiteSpace(t.Hospital) && // Must have a hospital
-                //!string.IsNullOrWhiteSpace(t.Patient) && // Must have a patient
-                //Hospitals.Any(h => h.Name.Equals(t.Hospital, StringComparison.OrdinalIgnoreCase)) && // Hospital must exist
-                //Patients.Any(p => p.PatientName.Equals(t.Patient, StringComparison.OrdinalIgnoreCase)) && // Patient must exist
-                //Providers.Any(p => p.Name.Equals(t.Provider, StringComparison.OrdinalIgnoreCase)) && // Provider must exist
-                //(!string.IsNullOrWhiteSpace(t.DateTimeDischarged) || // If discharged date is present, provider and details must also be present
-                // (!string.IsNullOrWhiteSpace(t.Provider) && !string.IsNullOrWhiteSpace(t.Details)))
-            //)
-            //.ToList();
+        Treatments = allTreatments
+            .Where(t =>
+                !string.IsNullOrWhiteSpace(t.Hospital) && // Must have a hospital
+                !string.IsNullOrWhiteSpace(t.Patient) && // Must have a patient
+                Hospitals.Any(h => h.Name.Equals(t.Hospital, StringComparison.OrdinalIgnoreCase)) &&  // Hospital must exist
+                Patients.Any(p => p.MedicalReferenceNumber.Equals(t.Patient, StringComparison.OrdinalIgnoreCase)) && // Patient must exist
+                (string.IsNullOrWhiteSpace(t.DateTimeDischarged) || // If discharged date is present, details must also be present
+                (!string.IsNullOrWhiteSpace(t.Provider) && !string.IsNullOrWhiteSpace(t.Details))) && // If discharged, must have provider and details
+                (string.IsNullOrWhiteSpace(t.Provider) || Providers.Any(p => p.Name.Equals(t.Provider, StringComparison.OrdinalIgnoreCase))) // Provider must exist if specified
+            )
+            .ToList();
         
         // Update the selected hospital
         SelectedHospital = selectedHospital;

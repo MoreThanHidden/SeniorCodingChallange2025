@@ -245,7 +245,8 @@ else
               <option value="">-- Select Provider --</option>
               @foreach (var provider in Model.Providers)
               {
-                <option value="@provider.Name">@provider.Name</option>
+                //List the Provider Number with the Name
+                <option value="@provider.Name">@provider.Name (@provider.Number)</option>
               }
             </select>
           </div>
@@ -255,7 +256,8 @@ else
               <option value="">-- Select Patient --</option>
               @foreach (var patient in Model.Patients)
               {
-                <option value="@patient.PatientName">@patient.PatientName</option>
+                //List the MedicalReferenceNumber with the Name
+                <option value="@patient.MedicalReferenceNumber">@patient.PatientName (@patient.MedicalReferenceNumber)</option>
               }
             </select>
           </div>
@@ -296,6 +298,7 @@ else
         } else {
           document.getElementById('editDateTimeDischarged').value = '';
         }
+        // Set selected for patient dropdown using MedicalReferenceNumber
         var patientSelect = document.getElementById('editPatient');
         if (patientSelect) {
           setTimeout(function() {
