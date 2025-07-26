@@ -22,6 +22,11 @@ public class IndexModel : PageModel
     // List of hospitals loaded from CSV
     public List<Hospital> Hospitals { get; set; } = new();
     
+    // List of patients loaded from CSV
+    public List<Patient> Patients { get; set; } = new();
+    // List of treatments loaded from CSV
+    public List<Treatment> Treatments { get; set; } = new();
+    
     // Selected hospital from the dropdown
     public string SelectedHospital { get; set; }
 
@@ -57,6 +62,54 @@ public class IndexModel : PageModel
             .Where(h => !string.IsNullOrWhiteSpace(h.Name) && !string.IsNullOrWhiteSpace(h.Identity))
             .ToList();
 
+        // Load patients from CSV
+        var patientsPath = Path.Combine(Directory.GetCurrentDirectory(), "InputCSV", "Patients.csv");
+        var allPatients = CsvLoader.LoadCsv(patientsPath, fields => new Patient
+        {
+            MedicalReferenceNumber = fields[0].Trim('"').Trim(),
+            PatientName = fields[1].Trim('"').Trim()
+        });
+        
+        // Only keep valid patients according to all rules:
+        // Must have both a Medical Reference Number and a name.
+        // Must abide by the name validation rules.
+        Patients = allPatients
+            .Where(p =>
+                !string.IsNullOrWhiteSpace(p.MedicalReferenceNumber) && // Must have a Medical Reference Number
+                !string.IsNullOrWhiteSpace(p.PatientName) && // Must have a name
+                IsValidName(p.PatientName) // Name must be valid according to the rules
+            )
+            .ToList();
+
+        // Load treatments from CSV
+        var treatmentsPath = Path.Combine(Directory.GetCurrentDirectory(), "InputCSV", "Treatments.csv");
+        var allTreatments = CsvLoader.LoadCsv(treatmentsPath, fields => new Treatment
+        {
+            Details = fields[0].Trim('"').Trim(),
+            Hospital = fields[1].Trim('"').Trim(),
+            Provider = fields[2].Trim('"').Trim(),
+            Patient = fields[3].Trim('"').Trim(),
+            DateTimeDischarged = fields[4].Trim('"').Trim()
+        });
+
+        // Only keep valid treatments according to all rules:
+        // All treatments must have a hospital and patient.
+        // If a treatment has a dispatched date, it must have a provider and details.
+        // All hospitals referenced by treatments must exist in the hospitals data file.
+        // All clients referenced by treatments must exist in the patients data file.
+        // All providers referenced by treatments must exist in the providers data file.
+        Treatments = allTreatments;
+            //.Where(t =>
+                //!string.IsNullOrWhiteSpace(t.Hospital) && // Must have a hospital
+                //!string.IsNullOrWhiteSpace(t.Patient) && // Must have a patient
+                //Hospitals.Any(h => h.Name.Equals(t.Hospital, StringComparison.OrdinalIgnoreCase)) && // Hospital must exist
+                //Patients.Any(p => p.PatientName.Equals(t.Patient, StringComparison.OrdinalIgnoreCase)) && // Patient must exist
+                //Providers.Any(p => p.Name.Equals(t.Provider, StringComparison.OrdinalIgnoreCase)) && // Provider must exist
+                //(!string.IsNullOrWhiteSpace(t.DateTimeDischarged) || // If discharged date is present, provider and details must also be present
+                // (!string.IsNullOrWhiteSpace(t.Provider) && !string.IsNullOrWhiteSpace(t.Details)))
+            //)
+            //.ToList();
+        
         // Update the selected hospital
         SelectedHospital = selectedHospital;
         

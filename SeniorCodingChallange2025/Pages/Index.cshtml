@@ -10,8 +10,12 @@
 
     var filteredProviders = string.IsNullOrEmpty(Model.SelectedHospital) ? Model.Providers : Model.Providers.Where(p => p.Hospital == Model.SelectedHospital);
 
+    
+    
     var user = await UserManager.GetUserAsync(User);
     var roles = await UserManager.GetRolesAsync(user);
+    
+    
     if (roles.Contains("Administrator"))
     {
         <h2>Administrator View:</h2>
@@ -28,21 +32,126 @@
     {
         <h2>Nurse View:</h2>
     }
-
-    <form method="get">
-        <div class="form-group">
-            <label for="hospitalSelect">Select Hospital:</label>
-            <select id="hospitalSelect" name="selectedHospital" class="form-control" onchange="this.form.submit()">
-                <option value="">-- All Hospitals --</option>
-                @foreach (var hospital in Model.Hospitals)
-                {
-                    <option value="@hospital.Name" selected="@(hospital.Name == Model.SelectedHospital ? "selected" : null)">@hospital.Name</option>
-                }
-            </select>
-        </div>
-    </form>
     
+    var selectedProviderName = Request.Query["selectedProviderName"].ToString();
+    
+    <table class="table w-75" >
+        <tr>
+            <th>Roles:</th>
+            <td>@string.Join(", ", roles)</td>
+        </tr>
+        <tr>
+            <th>Username:</th>
+            <td>@user.UserName</td>
+        </tr>
+        <tr>
+            <th>Your Name: (For Testing)</th>
+            <td>
+                <form method="get" class="d-inline">
+                    <input type="hidden" name="selectedHospital" value="@Model.SelectedHospital" />
+                    <select class="form-control w-75 d-inline" name="selectedProviderName" onchange="this.form.submit()">
+                        <option value="">-- Select Your Name --</option>
+                        @if (roles.Contains("Doctor"))
+                        {
+                            foreach (var provider in filteredProviders.Where(p => p.Doctor))
+                            {
+                                if (provider.Name == selectedProviderName)
+                                {
+                                    <option value="@provider.Name" selected>@provider.Name (@provider.Hospital)</option>
+                                }
+                                else
+                                {
+                                    <option value="@provider.Name">@provider.Name (@provider.Hospital)</option>
+                                }
+                            }
+                        }
+                        else if (roles.Contains("Nurse"))
+                        {
+                            foreach (var provider in filteredProviders.Where(p => !p.Doctor))
+                            {
+                                if (provider.Name == selectedProviderName)
+                                {
+                                    <option value="@provider.Name" selected>@provider.Name (@provider.Hospital)</option>
+                                }
+                                else
+                                {
+                                    <option value="@provider.Name">@provider.Name (@provider.Hospital)</option>
+                                }
+                            }
+                        }
+                    </select>
+                </form>
+            </td>
+        </tr>
+        <tr>
+            <th>Hospital</th>
+            <td>
+                <form method="get" class="d-inline">
+                    <input type="hidden" name="selectedProviderName" value="@selectedProviderName" />
+                    <select id="hospitalSelect" name="selectedHospital" class="form-control" onchange="this.form.submit()">
+                        <option value="">-- All Hospitals --</option>
+                        @foreach (var hospital in Model.Hospitals)
+                        {
+                            if (hospital.Name == Model.SelectedHospital)
+                            {
+                                <option value="@hospital.Name" selected>@hospital.Name</option>
+                            }
+                            else
+                            {
+                                <option value="@hospital.Name">@hospital.Name</option>
+                            }
+                        }
+                    </select>
+                </form>
+            </td>
+        </tr>
+    </table>
+
+    
+    if (!string.IsNullOrEmpty(selectedProviderName) && (roles.Contains("Doctor") || roles.Contains("Nurse")))
+    {
+        <h4>Your Patients</h4>
+        var userPatients = Model.Treatments.Where(t => t.Provider == selectedProviderName)
+            .Select(t => Model.Patients.FirstOrDefault(p => p.MedicalReferenceNumber == t.Patient || p.PatientName == t.Patient))
+            .Where(p => p != null)
+            .Distinct()
+            .ToList();
+        if (userPatients.Any())
+        {
+            <ul>
+            @foreach (var patient in userPatients)
+            {
+                <li>@patient.PatientName (@patient.MedicalReferenceNumber)</li>
+            }
+            </ul>
+        }
+        else
+        {
+            <div class="alert alert-warning">No patients to display.</div>
+        }
+    }
+    <h4>Patients Admitted to This Practice (No Treatment Yet)</h4>
+    @if (!string.IsNullOrEmpty(Model.SelectedHospital))
+    {
+        var admittedPatients = Model.Patients
+            .Where(p => Model.Treatments.All(t => t.Patient != p.MedicalReferenceNumber && t.Patient != p.PatientName))
+            .ToList();
+        if (admittedPatients.Any())
+        {
+            <ul>
+            @foreach (var patient in admittedPatients)
+            {
+                <li>@patient.PatientName (@patient.MedicalReferenceNumber)</li>
+            }
+            </ul>
+        }
+        else
+        {
+            <div class="alert alert-warning">No admitted patients without treatment for this practice.</div>
+        }
+    }
     <h2>Providers</h2>
+    <p>Number of Providers: @filteredProviders.Count()</p>
     <table class="table table-bordered table-striped">
         <thead>
         <tr>
@@ -64,7 +173,6 @@
         }
         </tbody>
     </table>
-    
     
 }
 else
