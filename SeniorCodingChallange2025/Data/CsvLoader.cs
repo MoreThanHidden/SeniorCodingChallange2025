@@ -80,7 +80,7 @@
         // Patient name or ID who received the treatment.
         public string Patient { get; set; }
         
-        // Date and time the patient was discharged (as string from CSV).
-        public string DateTimeDischarged { get; set; }
+        // Date and time the patient was discharged (as DateTime from CSV).
+        public DateTime? DateTimeDischarged { get; set; }
     }
 }

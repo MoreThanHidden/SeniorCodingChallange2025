@@ -7,6 +7,10 @@ namespace SeniorCodingChallange2025.Pages;
 public class IndexModel : PageModel
 {
     private readonly ILogger<IndexModel> _logger;
+    private TreatmentService _treatmentService;
+    private ProviderService _providerService;
+    private HospitalService _hospitalService;
+    private PatientService _patientService;
 
     /// <summary>
     /// Constructor for IndexModel
@@ -33,113 +37,22 @@ public class IndexModel : PageModel
 
     public void OnGet(string? selectedHospital = null)
     {
-        // Load providers from CSV
-        var csvPath = Path.Combine(Directory.GetCurrentDirectory(), "InputCSV", "Providers.csv");
-        var allProviders = CsvLoader.LoadCsv(csvPath, fields => new Provider
-        {
-            Name = fields[0].Trim('"').Trim(),
-            Number = fields[1].Trim('"').Trim(),
-            Hospital = fields[2].Trim('"').Trim(),
-            Doctor = fields[3].Trim('"').Trim().Equals("Yes", StringComparison.OrdinalIgnoreCase)
-        });
-
-        // Only keep valid providers
-        Providers = allProviders
-            .Where(p => !string.IsNullOrWhiteSpace(p.Name) &&
-                        !string.IsNullOrWhiteSpace(p.Number) &&
-                        IsValidName(p.Name))
-            .ToList();
-
-        // Load hospitals from CSV
+        // Load providers, hospitals, patients using services
+        var providersPath = Path.Combine(Directory.GetCurrentDirectory(), "InputCSV", "Providers.csv");
         var hospitalsPath = Path.Combine(Directory.GetCurrentDirectory(), "InputCSV", "Hospitals.csv");
-        var allHospitals = CsvLoader.LoadCsv(hospitalsPath, fields => new Hospital
-        {
-            Name = fields[0].Trim('"'),
-            Identity = fields[1].Trim('"')
-        });
-        
-        // All hospitals must have a name and identity.
-        Hospitals = allHospitals
-            .Where(h => !string.IsNullOrWhiteSpace(h.Name) && !string.IsNullOrWhiteSpace(h.Identity))
-            .ToList();
-
-        // Load patients from CSV
         var patientsPath = Path.Combine(Directory.GetCurrentDirectory(), "InputCSV", "Patients.csv");
-        var allPatients = CsvLoader.LoadCsv(patientsPath, fields => new Patient
-        {
-            MedicalReferenceNumber = fields[0].Trim('"').Trim(),
-            PatientName = fields[1].Trim('"').Trim()
-        });
-        
-        // Only keep valid patients according to all rules:
-        // Must have both a Medical Reference Number and a name.
-        // Must abide by the name validation rules.
-        Patients = allPatients
-            .Where(p =>
-                !string.IsNullOrWhiteSpace(p.MedicalReferenceNumber) && // Must have a Medical Reference Number
-                !string.IsNullOrWhiteSpace(p.PatientName) && // Must have a name
-                IsValidName(p.PatientName) // Name must be valid according to the rules
-            )
-            .ToList();
-
-        // Load treatments from CSV
+        _providerService = new ProviderService(providersPath);
+        _hospitalService = new HospitalService(hospitalsPath);
+        _patientService = new PatientService(patientsPath);
+        Providers = _providerService.LoadProviders();
+        Hospitals = _hospitalService.LoadHospitals();
+        Patients = _patientService.LoadPatients();
+        // Initialize TreatmentService
         var treatmentsPath = Path.Combine(Directory.GetCurrentDirectory(), "InputCSV", "Treatments.csv");
-        var allTreatments = CsvLoader.LoadCsv(treatmentsPath, fields => new Treatment
-        {
-            Details = fields[0].Trim('"').Trim(),
-            Hospital = fields[1].Trim('"').Trim(),
-            Provider = fields[2].Trim('"').Trim(),
-            Patient = fields[3].Trim('"').Trim(),
-            DateTimeDischarged = fields[4].Trim('"').Trim()
-        });
-
-        // Only keep valid treatments according to all rules:
-        // All treatments must have a hospital and patient.
-        // If a treatment has a dispatched date, it must have a provider and details.
-        // All hospitals referenced by treatments must exist in the hospitals data file.
-        // All clients referenced by treatments must exist in the patients data file.
-        // All providers referenced by treatments must exist in the providers data file.
-        Treatments = allTreatments
-            .Where(t =>
-                !string.IsNullOrWhiteSpace(t.Hospital) && // Must have a hospital
-                !string.IsNullOrWhiteSpace(t.Patient) && // Must have a patient
-                Hospitals.Any(h => h.Name.Equals(t.Hospital, StringComparison.OrdinalIgnoreCase)) &&  // Hospital must exist
-                Patients.Any(p => p.MedicalReferenceNumber.Equals(t.Patient, StringComparison.OrdinalIgnoreCase)) && // Patient must exist
-                (string.IsNullOrWhiteSpace(t.DateTimeDischarged) || // If discharged date is present, details must also be present
-                (!string.IsNullOrWhiteSpace(t.Provider) && !string.IsNullOrWhiteSpace(t.Details))) && // If discharged, must have provider and details
-                (string.IsNullOrWhiteSpace(t.Provider) || Providers.Any(p => p.Name.Equals(t.Provider, StringComparison.OrdinalIgnoreCase))) // Provider must exist if specified
-            )
-            .ToList();
-        
-        // Update the selected hospital
+        _treatmentService = new TreatmentService(treatmentsPath, Hospitals, Providers, Patients);
+        Treatments = _treatmentService.LoadTreatments();
         SelectedHospital = selectedHospital;
-        
-        // All providers must have a name and number.
-        // Server-side validation logic, output to console for invalid providers
-        foreach (var provider in allProviders)
-        {
-            // Check if provider has a name and number
-            if (string.IsNullOrWhiteSpace(provider.Name) || string.IsNullOrWhiteSpace(provider.Number))
-            {
-                // If either is missing, output to console
-                Console.WriteLine($"Provider missing name or number: {provider.Name} / {provider.Number}");
-            }
-            // Check if provider name is valid
-            else if (!IsValidName(provider.Name))
-            {
-                // If name is invalid, output to console
-                Console.WriteLine($"Invalid provider name: {provider.Name}");
-            }
-        }
-
-        // All hospitals must have a name and identity.
-        foreach (var hospital in allHospitals)
-        {
-            if (string.IsNullOrWhiteSpace(hospital.Name) || string.IsNullOrWhiteSpace(hospital.Identity))
-            {
-                Console.WriteLine($"Hospital missing name or identity: {hospital.Name} / {hospital.Identity}");
-            }
-        }
+        // Validation moved to services
     }
 
     /// <summary>
@@ -154,46 +67,30 @@ public class IndexModel : PageModel
         var provider = form["Provider"].ToString();
         var patient = form["Patient"].ToString();
         var dateTimeDischarged = form["DateTimeDischarged"].ToString();
-
-        // Reload all data (to keep lists in sync)
         OnGet();
-        
         if (!string.IsNullOrEmpty(editTreatmentId))
         {
-            // Edit existing treatment
             if (int.TryParse(editTreatmentId, out int idx) && idx >= 0 && idx < Treatments.Count)
             {
                 Treatments[idx].Details = details;
                 Treatments[idx].Hospital = hospital;
                 Treatments[idx].Provider = provider;
                 Treatments[idx].Patient = patient;
-                Treatments[idx].DateTimeDischarged = dateTimeDischarged;
+                Treatments[idx].DateTimeDischarged = DateTime.TryParse(dateTimeDischarged, out var dt) ? dt : (DateTime?)null;
             }
         }
         else
         {
-            // Add new treatment
             Treatments.Add(new Treatment
             {
                 Details = details,
                 Hospital = hospital,
                 Provider = provider,
                 Patient = patient,
-                DateTimeDischarged = dateTimeDischarged
+                DateTimeDischarged = DateTime.TryParse(dateTimeDischarged, out var dt) ? dt : (DateTime?)null
             });
         }
-
-        // Save all treatments back to CSV
-        var treatmentsPath = Path.Combine(Directory.GetCurrentDirectory(), "InputCSV", "Treatments.csv");
-        using (var writer = new StreamWriter(treatmentsPath, false))
-        {
-            foreach (var t in Treatments)
-            {
-                // Write each treatment as a CSV line
-                await writer.WriteLineAsync($"\"{t.Details}\",\"{t.Hospital}\",\"{t.Provider}\",\"{t.Patient}\",\"{t.DateTimeDischarged}\"");
-            }
-        }
-
+        _treatmentService.SaveTreatments(Treatments);
         return RedirectToPage();
     }
 
