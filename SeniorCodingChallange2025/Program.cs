@@ -17,6 +17,13 @@ builder.Services.AddRazorPages();
 
 var app = builder.Build();
 
+// Apply any pending migrations automatically
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    db.Database.Migrate();
+}
+
 // Seed default users and roles
 using (var scope = app.Services.CreateScope())
 {
